@@ -62,6 +62,7 @@ public class ObjectDetectUtil implements ObjectDetector {
 
     // Only return this many results.
     private static final int NUM_DETECTIONS = 10;
+
     // Float model
     private static final float IMAGE_MEAN = 127.5f;
     private static final float IMAGE_STD = 127.5f;

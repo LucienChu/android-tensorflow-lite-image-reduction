@@ -7,7 +7,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.RectF;
 import android.media.ExifInterface;
-import android.os.Environment;
 import android.renderscript.Allocation;
 import android.renderscript.Element;
 import android.renderscript.RenderScript;
@@ -17,19 +16,17 @@ import android.util.Log;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Locale;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Utility class for manipulating images.
  */
 public class ImageUtils {
     private static final String TAG = "ImageUtils";
-    public static final float SIZE = 300;
     // This value is 2 ^ 18 - 1, and is used to clamp the RGB values before their ranges
     // are normalized to eight bits.
+
+    public static final float SIZE = Constants.SIZE;
     static final int kMaxChannelValue = 262143;
 
     // for render script to blur image (bitmap)
@@ -211,27 +208,13 @@ public class ImageUtils {
     }
 
 
-//  private static final float BITMAP_SCALE = 0.25f;
-//  private static final float BLUR_RADIUS = 25f;
-//
-//  public static Bitmap blur(Context context, Bitmap image) {
-//
-//
-//
-//    Bitmap inputBitmap = Bitmap.createBitmap(image);
-//    Bitmap outputBitmap = Bitmap.createBitmap(image);
-//    RenderScript rs = RenderScript.create(context);
-//    ScriptIntrinsicBlur intrinsicBlur = ScriptIntrinsicBlur.create(rs, Element.U8_4(rs));
-//    Allocation tmpIn = Allocation.createFromBitmap(rs, inputBitmap);
-//    Allocation tmpOut = Allocation.createFromBitmap(rs, outputBitmap);
-//    intrinsicBlur.setRadius(BLUR_RADIUS);
-//    intrinsicBlur.setInput(tmpIn);
-//    intrinsicBlur.forEach(tmpOut);
-//    tmpOut.copyTo(outputBitmap);
-//    return outputBitmap;
-//    }
-
-
+    /**
+     * blur the whole image
+     *
+     * @param context Context
+     * @param image   image to be blurred
+     * @return the blurred image
+     */
     public static Bitmap blur(Context context, Bitmap image) {
         int width = Math.round(image.getWidth());
         int height = Math.round(image.getHeight());
@@ -276,6 +259,14 @@ public class ImageUtils {
     }
 
 
+    /**
+     * blur some parts of an image
+     *
+     * @param context   Context
+     * @param image     original image
+     * @param locations parts, represents as RectF, to be blurred
+     * @return a deep copy of the original image with parts blurred out
+     */
     public static Bitmap blur(Context context, Bitmap image, ArrayList<RectF> locations) {
 
         Bitmap copy = image;
@@ -288,39 +279,31 @@ public class ImageUtils {
         return copy;
     }
 
+    /**
+     * Blur a part of an image
+     * take the part from the image away, blurred it out as a whole, and put all
+     * the pixels back to the original image
+     *
+     * @param context  Context
+     * @param image    original image
+     * @param location the area, represents as RectF, to be blurred
+     * @return a deep copy of the original image with the given area blurred out
+     * @see #getOverlayBitMap(Bitmap, Bitmap, int, int)
+     */
     public static Bitmap blur(Context context, Bitmap image, RectF location) {
 
-        float widthFactor = image.getWidth() / SIZE;
-        float heightFactor = image.getHeight() / SIZE;
+        RectFOnImage rectFOnImage = new RectFOnImage(image, location, SIZE);
+        int x0 = rectFOnImage.getX0();
+        int y0 = rectFOnImage.getY0();
+        int x1 = rectFOnImage.getX1();
+        int y1 = rectFOnImage.getY1();
 
-
-        int x0 = (int) Math.floor((location.left) * widthFactor);
-        int y0 = (int) Math.floor((location.top) * heightFactor);
-        int x1 = (int) Math.floor(((location.right)) * widthFactor);
-        int y1 = (int) Math.floor(((location.bottom)) * heightFactor);
-
-        // bound coordinates between 0 and the width or height respective
-        // the number would be out of bound due to rounding issues
-        // encountered during testing
-        if (x0 < 0 || x0 > image.getWidth()) {
-            x0 = x0 < 0 ? 0 : image.getWidth();
-        }
-        if (x1 < 0 || x1 > image.getWidth()) {
-            x1 = x1 < 0 ? 0 : image.getWidth();
-        }
-
-        if (y1 < 0 || y1 > image.getHeight()) {
-            y1 = y1 < 0 ? 0 : image.getHeight();
-        }
-
-        if (y0 < 0 || y0 > image.getHeight()) {
-            y0 = y0 < 0 ? 0 : image.getHeight();
-        }
-
-        int croppedWidth = x1 - x0;
-        int croppedHeight = y1 - y0;
+        int croppedWidth = rectFOnImage.getWidth();
+        int croppedHeight = rectFOnImage.getHeight();
 
 //        Bitmap inputBitmap = Bitmap.createScaledBitmap(image, width, height, false);
+//        String tempUri = x0 + "-" + y0 + "-" + croppedWidth + "-" + croppedHeight;
+        Log.i(TAG, "detectCarsAndPedestrians: locations 1280: [" + x0 + ", " + y0 + ", " + croppedWidth + ", " + croppedHeight + " ]");
         try {
             Bitmap inputBitmap = Bitmap.createBitmap(image, x0, y0, croppedWidth, croppedHeight);
 //            saveBitmap(inputBitmap, "/sdcard/Android/data/com.lucienchu.tensorflowliteobjectdetection/files/Documents/images/part_not_blur.jpg");
@@ -339,7 +322,7 @@ public class ImageUtils {
 
 //        return outputBitmap;
 
-//            saveBitmap(image, "/sdcard/Android/data/com.lucienchu.tensorflowliteobjectdetection/files/Documents/images/origin_not_merge.jpg");
+//            saveBitmap(image, "/sdcard/Android/data/com.lucienchu.tensorflowliteobjectdetection/files/Documents/images/" + tempUri +".jpg");
 
             return getOverlayBitMap(image, outputBitmap, x0, y0);
         } catch (IllegalArgumentException e) {
@@ -348,6 +331,17 @@ public class ImageUtils {
         }
     }
 
+
+    /**
+     * merge the blurred area, blurred as a whole, with the original image by simply replacing the pxiesl
+     * of the given area with the blurred pixels
+     *
+     * @param image image to be merged
+     * @param part  the blurred part
+     * @param x0    x-axis from where to replacing the pixels of the image
+     * @param y0    y-axis from where to replacing the pixels of the image
+     * @return a deep copy of the image with the blurred part merged
+     */
     public static Bitmap getOverlayBitMap(Bitmap image, Bitmap part, int x0, int y0) {
 //        saveBitmap(image, "/sdcard/Android/data/com.lucienchu.tensorflowliteobjectdetection/files/Documents/images/origin_not_merge.jpg");
 
@@ -388,6 +382,87 @@ public class ImageUtils {
 
 
     /**
+     * draw a bounding box, defined by the location (RectF) object, on the image
+     *
+     * @param image    original image
+     * @param location the rectangular bounding box
+     * @return a deep copy of the
+     */
+    public static Bitmap drawBoundingBox(Bitmap image, RectF location) {
+        Bitmap temp = image;
+        if (!image.isMutable()) {
+            temp = image.copy(Bitmap.Config.ARGB_8888, true);
+        }
+        RectFOnImage rectFOnImage = new RectFOnImage(image, location, SIZE);
+        int x0 = rectFOnImage.getX0();
+        int y0 = rectFOnImage.getY0();
+        int x1 = rectFOnImage.getX1();
+        int y1 = rectFOnImage.getY1();
+
+
+        // draw top and bottom edges
+        for (int x = x0; x < x1; x++) {
+            // top edge
+            for (int y = y0; y < y0 + 2; y++) {
+                try {
+                    temp.setPixel(x, y, Color.BLUE);
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            // bottom edge
+            for (int y = y1 - 2; y < y1; y++) {
+                try {
+                    temp.setPixel(x, y, Color.BLUE);
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        // draw left and right edges
+        for (int y = y0; y < y1; y++) {
+
+            // top edge
+            for (int x = x0; x < x0 + 2; x++) {
+                try {
+                    temp.setPixel(x, y, Color.BLUE);
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            // bottom edge
+            for (int x = x1 - 2; x < x1; x++) {
+                try {
+                    temp.setPixel(x, y, Color.BLUE);
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return temp;
+    }
+
+    /**
+     * draw a set of bounding boxes on an image
+     *
+     * @param image     original image
+     * @param locations RectF objects that define the bounding boxes
+     * @return an image of bounding boxes drawn on.
+     */
+    public static Bitmap drawBoundingBoxes(Bitmap image, ArrayList<RectF> locations) {
+        Bitmap copy = image.copy(Bitmap.Config.ARGB_8888, true);
+        for (RectF location : locations) {
+            copy = drawBoundingBox(copy, location);
+        }
+        return copy;
+    }
+
+
+    /**
      * give an image and a location, mask out the pixels within the location
      *
      * @param image
@@ -395,32 +470,11 @@ public class ImageUtils {
      * @return
      */
     public static Bitmap getMaskBitMap(Bitmap image, RectF location) {
-        float widthFactor = image.getWidth() / SIZE;
-        float heightFactor = image.getHeight() / SIZE;
-
-
-        int x0 = (int) Math.floor((location.left) * widthFactor);
-        int y0 = (int) Math.floor((location.top) * heightFactor);
-        int x1 = (int) Math.floor(((location.right)) * widthFactor);
-        int y1 = (int) Math.floor(((location.bottom)) * heightFactor);
-
-        // bound coordinates between 0 and the width or height respective
-        // the number would be out of bound due to rounding issues
-        // encountered during testing
-        if (x0 < 0 || x0 > image.getWidth()) {
-            x0 = x0 < 0 ? 0 : image.getWidth();
-        }
-        if (x1 < 0 || x1 > image.getWidth()) {
-            x1 = x1 < 0 ? 0 : image.getWidth();
-        }
-
-        if (y1 < 0 || y1 > image.getHeight()) {
-            y1 = y1 < 0 ? 0 : image.getHeight();
-        }
-
-        if (y0 < 0 || y0 > image.getHeight()) {
-            y0 = y0 < 0 ? 0 : image.getHeight();
-        }
+        RectFOnImage rectFOnImage = new RectFOnImage(image, location, SIZE);
+        int x0 = rectFOnImage.getX0();
+        int y0 = rectFOnImage.getY0();
+        int x1 = rectFOnImage.getX1();
+        int y1 = rectFOnImage.getY1();
 
 
         for (int x = x0; x < x1; x++) {
@@ -483,4 +537,89 @@ public class ImageUtils {
         }
         return origin;
     }
+
+    static class RectFOnImage {
+        private final Bitmap image;
+        private final RectF location;
+        private final float relativeSize;
+
+
+        private int x0;
+        private int y0;
+        private int x1;
+        private int y1;
+
+        public RectFOnImage(Bitmap image, RectF location, float relativeSize) {
+            this.image = image;
+            this.location = location;
+            this.relativeSize = relativeSize;
+            boundRectFonImage();
+        }
+
+        private void boundRectFonImage() {
+            float widthFactor = this.image.getWidth() / this.relativeSize;
+            float heightFactor = this.image.getHeight() / this.relativeSize;
+
+            this.x0 = (int) Math.floor((location.left) * widthFactor);
+            this.y0 = (int) Math.floor((location.top) * heightFactor);
+            this.x1 = (int) Math.floor(((location.right)) * widthFactor);
+            this.y1 = (int) Math.floor(((location.bottom)) * heightFactor);
+
+            if (x0 < 0 || x0 > image.getWidth()) {
+                this.x0 = x0 < 0 ? 0 : image.getWidth();
+            }
+
+            if (y0 < 0 || y0 > image.getHeight()) {
+                this.y0 = y0 < 0 ? 0 : image.getHeight();
+            }
+
+            if (x1 < 0 || x1 > image.getWidth()) {
+                this.x1 = x1 < 0 ? 0 : image.getWidth();
+            }
+
+            if (y1 < 0 || y1 > image.getHeight()) {
+                this.y1 = y1 < 0 ? 0 : image.getHeight();
+            }
+        }
+
+        public int getX0() {
+            return this.x0;
+        }
+
+        public int getY0() {
+            return this.y0;
+        }
+
+        public int getX1() {
+            return this.x1;
+        }
+
+        public int getY1() {
+            return this.y1;
+        }
+
+        public int getHeight() {
+            int height = this.y1 - this.y0;
+            if (height >= image.getHeight()) {
+                return image.getHeight();
+            } else if (height <= 0) {
+                return 0;
+            }
+            return height;
+        }
+
+        public int getWidth() {
+            int x0 = getX0();
+            int x1 = getX1();
+            int width = x1 - x0;
+
+            if (width >= image.getWidth()) {
+                return image.getWidth();
+            } else if (width <= 0) {
+                return 0;
+            }
+            return width;
+        }
+    }
+
 }

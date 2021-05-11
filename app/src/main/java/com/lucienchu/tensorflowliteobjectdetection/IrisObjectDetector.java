@@ -12,11 +12,9 @@ import java.util.List;
 
 public class IrisObjectDetector {
     private static final String TAG = "IrisObjectDetector";
-    static final int INPUT_SIZE = 300;
-    static String MODEL_FILE_NAME = "detect.tflite";
-    static String MODEL_LABEL_NAME = "labelmap.txt";
+    static final int INPUT_SIZE = (int) Constants.SIZE;
     static boolean isQuantized = true;
-    final WeakReference<Context> contextWeakReference;
+    private WeakReference<Context> contextWeakReference;
 
     private ObjectDetector objectDetector;
     public IrisObjectDetectorListener listener;
@@ -29,7 +27,7 @@ public class IrisObjectDetector {
         long loadModelStartTime = System.currentTimeMillis();
         this.listener = listener;
         try {
-            this.objectDetector = ObjectDetectUtil.create(contextWeakReference.get(), MODEL_FILE_NAME, MODEL_LABEL_NAME, INPUT_SIZE, isQuantized);
+            this.objectDetector = ObjectDetectUtil.create(contextWeakReference.get(), Constants.MODEL_FILE_NAME, Constants.MODEL_LABEL_NAME, INPUT_SIZE, isQuantized);
             objectDetector.setUseNNAPI(true);
             long loadModelEndTime = System.currentTimeMillis();
             Log.i(TAG, "IrisObjectDetector: loadModel took " + (loadModelEndTime - loadModelStartTime) / 1000f + " seconds");
@@ -117,15 +115,19 @@ public class IrisObjectDetector {
             String title = result.getTitle().toLowerCase();
             if (location != null && result.getConfidence() >= minimumConfidence && (title.equals("person") || title.equals("car"))) {
                 locations.add(location);
+                Log.i(TAG, "detectCarsAndPedestrians: locations300: [" + location.top + ", " + location.left + ", " + location.bottom + ", " + location.bottom + " ]");
             }
         }
 
         long maskingStartTime = System.currentTimeMillis();
 
+
         // if locations has values (object found), do reduction here
         if (locations.size() > 0) {
             maskedCroppedImage = ImageUtils.blur(contextWeakReference.get(), croppedBitmap, locations);
             maskedImage = ImageUtils.blur(contextWeakReference.get(), image, locations);
+//            maskedCroppedImage = ImageUtils.drawBoundingBoxes(croppedBitmap, locations);
+//            maskedImage = ImageUtils.drawBoundingBoxes(image, locations);
 
         }
         long maskingEndTime = System.currentTimeMillis();
@@ -138,6 +140,19 @@ public class IrisObjectDetector {
         if (maskedImage != null) {
             ImageUtils.saveBitmap(maskedImage, imagePath.split("\\.jpg")[0] + INPUT_SIZE + "BLUE.jpg");
         }
+    }
+
+
+    public void close() {
+        if (this.objectDetector != null) {
+            objectDetector.close();
+            Log.i(TAG, "close: objected detector is CLOSED");
+        }
+    }
+
+    public void releaseContext() {
+        this.contextWeakReference = null;
+        this.listener = null;
     }
 
 

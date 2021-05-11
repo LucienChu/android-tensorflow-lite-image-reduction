@@ -33,11 +33,13 @@ public class MainActivity extends AppCompatActivity implements IrisObjectDetecto
 
 
 
+
 //            ImageUtils.saveBitmap(croppedBitmap, f.getParent() + "/300X300/");
 
             this.irisObjectDetector.detectCarsAndPedestrians(flippedImage, f.toString());
-
-
+            this.irisObjectDetector.close();
+            this.irisObjectDetector.releaseContext();
+            this.irisObjectDetector = null;
         }
     }
 
