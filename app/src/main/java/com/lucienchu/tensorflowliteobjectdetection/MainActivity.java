@@ -30,17 +30,18 @@ public class MainActivity extends AppCompatActivity implements IrisObjectDetecto
         for (File f : fs) {
             Bitmap origin = BitmapFactory.decodeFile(f.getPath());
             Bitmap flippedImage = ImageUtils.getRotatedBitmap(origin, f.getPath());
-
-
+//            ImageUtils.saveBitmap(flippedImage,  f.getPath().split(".jpg")[0] + "-flipped.jpg");
 
 
 //            ImageUtils.saveBitmap(croppedBitmap, f.getParent() + "/300X300/");
 
-            this.irisObjectDetector.detectCarsAndPedestrians(flippedImage, f.toString());
-            this.irisObjectDetector.close();
-            this.irisObjectDetector.releaseContext();
-            this.irisObjectDetector = null;
+
+                this.irisObjectDetector.detectCarsAndPedestrians(flippedImage, f.toString());
+
         }
+//        this.irisObjectDetector.close();
+//        this.irisObjectDetector.releaseContext();
+//        this.irisObjectDetector = null;
     }
 
     @Override

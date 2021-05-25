@@ -61,7 +61,7 @@ public class ObjectDetectUtil implements ObjectDetector {
     private static final String TAG = "ObjectDetectUtil";
 
     // Only return this many results.
-    private static final int NUM_DETECTIONS = 10;
+    private static final int NUM_DETECTIONS = Constants.NUM_DETECTIONS;
 
     // Float model
     private static final float IMAGE_MEAN = 127.5f;
