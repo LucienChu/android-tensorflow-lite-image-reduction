@@ -10,8 +10,12 @@ public class Constants {
 //    public static final int NUM_DETECTIONS = 25;
 
     // short
-    static String MODEL_FILE_NAME = "detect.tflite";
+//    static String MODEL_FILE_NAME = "detect.tflite";
+//    static String MODEL_LABEL_NAME = "labelmap.txt";
+//    public static final float SIZE = 300;
+//    public static final int NUM_DETECTIONS = 10;
+    static String MODEL_FILE_NAME = "model.tflite";
     static String MODEL_LABEL_NAME = "labelmap.txt";
-    public static final float SIZE = 300;
-    public static final int NUM_DETECTIONS = 10;
+    public static final float SIZE = 640;
+    public static final int NUM_DETECTIONS = 20;
 }
