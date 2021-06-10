@@ -27,18 +27,23 @@ public class MainActivity extends AppCompatActivity implements IrisObjectDetecto
     public void reduceImages() {
         File[] fs = new File(getExternalFilesDir(Environment.DIRECTORY_DOCUMENTS) + "/images").listFiles();
         Log.i(TAG, "reduceImages: ls: " + fs.length);
+        long reductionStartTime = System.currentTimeMillis();
+
         for (File f : fs) {
             Bitmap origin = BitmapFactory.decodeFile(f.getPath());
             Bitmap flippedImage = ImageUtils.getRotatedBitmap(origin, f.getPath());
-//            ImageUtils.saveBitmap(flippedImage,  f.getPath().split(".jpg")[0] + "-flipped.jpg");
+
+            long individualReductionStartTime = System.currentTimeMillis();
 
 
-//            ImageUtils.saveBitmap(croppedBitmap, f.getParent() + "/300X300/");
-
-
-                this.irisObjectDetector.detectCarsAndPedestrians(flippedImage, f.toString());
-
+//                this.irisObjectDetector.oneShotBlur(flippedImage, f.toString());
+//                this.irisObjectDetector.reduceInBlueAndKeptCropped(flippedImage, f.toString());
+                this.irisObjectDetector.loopReductionAndBlue(flippedImage, f.toString(), 1);
+            long individualReductionEndTime = System.currentTimeMillis();
+            Log.i(TAG, "individualReduction took " + (individualReductionEndTime - individualReductionStartTime) / 1000f + " seconds" );
         }
+        long reductionEndTime = System.currentTimeMillis();
+        Log.i(TAG, "reduction took " + (reductionEndTime - reductionStartTime) / 1000f + " seconds" );
 //        this.irisObjectDetector.close();
 //        this.irisObjectDetector.releaseContext();
 //        this.irisObjectDetector = null;
